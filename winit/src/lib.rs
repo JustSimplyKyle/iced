@@ -219,6 +219,8 @@ where
         adapters: Default::default(),
 
         #[cfg(target_arch = "wasm32")]
+        is_booted: std::rc::Rc::new(std::cell::RefCell::new(false)),
+        #[cfg(target_arch = "wasm32")]
         canvas: None,
     };
 
@@ -424,9 +426,11 @@ where
 
                                 #[cfg(target_arch = "wasm32")]
                                 let window_attributes = {
-                                    use winit::platform::web::WindowAttributesExtWebSys;
-                                    window_attributes
-                                        .with_canvas(self.canvas.take())
+                                    use winit::platform::web::WindowAttributesWeb;
+                                    window_attributes.with_platform_attributes(Box::new(
+                                        WindowAttributesWeb::default()
+                                            .with_canvas(self.canvas.take()),
+                                    ))
                                 };
 
                                 log::info!(
@@ -454,7 +458,7 @@ where
 
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    use winit::platform::web::WindowExtWebSys;
+                                    use winit::platform::web::WindowExtWeb;
 
                                     let canvas = window
                                         .canvas()
@@ -462,12 +466,17 @@ where
 
                                     let _ = canvas.set_attribute(
                                         "style",
-                                        "display: block; width: 100%; height: 100%",
+                                        "display: block; width: 100vw; height: 100vh",
                                     );
 
                                     let window = web_sys::window().unwrap();
                                     let document = window.document().unwrap();
                                     let body = document.body().unwrap();
+
+                                    let _ = body.set_attribute(
+                                        "style",
+                                        "margin: 0; overflow: hidden",
+                                    );
 
                                     let target = target.and_then(|target| {
                                         body.query_selector(&format!(
@@ -686,8 +695,7 @@ where
 
     #[cfg(target_arch = "wasm32")]
     {
-        use winit::platform::web::EventLoopExtWebSys;
-        let _ = event_loop.spawn_app(runner);
+        let _ = event_loop.run_app(runner);
 
         Ok(())
     }
@@ -1923,6 +1931,7 @@ async fn create_compositor<'a, P>(
 >
 where
     P: Program,
+    <<P as Program>::Renderer as compositor::Default>::Compositor: 'static,
 {
     let (compositor_sender, compositor_receiver) = oneshot::channel();
 

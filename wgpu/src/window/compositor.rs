@@ -55,10 +55,18 @@ impl Compositor {
     ///
     /// Returns `None` if no compatible graphics adapter could be found.
     pub async fn request<W: compositor::Window + Clone>(
-        settings: Settings,
+        mut settings: Settings,
         compatible_window: Option<W>,
         shell: Shell,
     ) -> Result<Self, Error> {
+        // iced's WebGL feature is the portable browser backend. Avoid
+        // selecting WebGPU first: it is still unavailable or incomplete in
+        // several browsers and software-rendered/headless environments.
+        #[cfg(target_arch = "wasm32")]
+        {
+            settings.backends = Backends::GL;
+        }
+
         #[cfg(wayland_platform)]
         let ids = compatible_window.as_ref().and_then(|window| {
             get_wayland_device_ids(window)
@@ -102,6 +110,7 @@ impl Compositor {
 
         log::info!("{settings:#?}");
 
+        #[cfg(wayland_platform)]
         unsafe {
             std::env::remove_var("VK_LOADER_DRIVERS_DISABLE");
         }

@@ -99,6 +99,12 @@ impl<T: 'static> Proxy<T> {
         self.event_sender
             .unbounded_send(Event::UserEvent(action))
             .expect("Send message to event loop");
+
+        // The browser event loop is owned by JavaScript and may be idle while
+        // an asynchronous compositor is being created. Queueing the iced
+        // action is not enough: explicitly wake winit so it polls the runtime
+        // and draws the first frame.
+        let _ = self.raw.wake_up();
     }
 
     /// Frees an amount of slots for additional messages to be queued in
