@@ -413,7 +413,7 @@ mod internal {
     }
 }
 
-#[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+#[cfg(feature = "hot")]
 mod hot {
     use std::collections::BTreeSet;
     use std::sync::atomic::{self, AtomicBool};
@@ -427,9 +427,7 @@ mod hot {
     static HOT_FUNCTIONS: OnceLock<BTreeSet<u64>> = OnceLock::new();
 
     pub fn init() {
-        cargo_hot::connect();
-
-        cargo_hot::subsecond::register_handler(Arc::new(|| {
+        subsecond::register_handler(Arc::new(|| {
             if HOT_FUNCTIONS.get().is_none() {
                 HOT_FUNCTIONS
                     .set(std::mem::take(
@@ -449,7 +447,7 @@ mod hot {
 
         // The `move` here is important. Hotpatching will not work
         // otherwise.
-        let mut f = cargo_hot::subsecond::HotFn::current(move || {
+        let mut f = subsecond::HotFn::current(move || {
             f.take().expect("Hot function is stale")()
         });
 
@@ -470,7 +468,7 @@ mod hot {
     }
 
     pub fn on_hotpatch(f: impl Fn() + Send + Sync + 'static) {
-        cargo_hot::subsecond::register_handler(Arc::new(f));
+        subsecond::register_handler(Arc::new(f));
     }
 
     pub fn is_stale() -> bool {
@@ -478,7 +476,7 @@ mod hot {
     }
 }
 
-#[cfg(any(not(feature = "hot"), target_arch = "wasm32"))]
+#[cfg(not(feature = "hot"))]
 mod hot {
     pub fn init() {}
 
