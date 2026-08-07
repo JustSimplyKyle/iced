@@ -22,11 +22,12 @@ hot = [
 ]
 
 [dependencies]
+dioxus-devtools.workspace = true
 iced_core.workspace = true
 iced_futures.workspace = true
 log.workspace = true
-subsecond.workspace = true
 subsecond.optional = true
+subsecond.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iced_beacon.workspace = true

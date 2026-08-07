@@ -436,6 +436,8 @@ mod hot {
     static HOT_FUNCTIONS: OnceLock<BTreeSet<u64>> = OnceLock::new();
 
     pub fn init() {
+        dioxus_devtools::connect_subsecond();
+
         subsecond::register_handler(Arc::new(|| {
             if HOT_FUNCTIONS.get().is_none() {
                 HOT_FUNCTIONS

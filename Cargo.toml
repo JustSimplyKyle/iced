@@ -152,6 +152,7 @@ dnd.workspace = true
 
 image.workspace = true
 image.optional = true
+dioxus-devtools.workspace = true
 
 [dev-dependencies]
 criterion = "0.5"
@@ -235,6 +236,8 @@ futures = { version = "0.3", default-features = false, features = [
 ] }
 glam = "0.25"
 iced_accessibility = { version = "0.1", path = "accessibility" }
+
+dioxus-devtools = "=0.7.9"
 
 async-std = "1.0"
 
