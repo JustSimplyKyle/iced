@@ -12,7 +12,14 @@ keywords.workspace = true
 
 [features]
 enable = ["dep:iced_beacon"]
-hot = ["enable", "dep:subsecond"]
+hot = [
+    "enable",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:subsecond",
+    "dep:wasm-bindgen",
+    "dep:web-sys",
+]
 
 [dependencies]
 iced_core.workspace = true
@@ -24,3 +31,15 @@ subsecond.optional = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 iced_beacon.workspace = true
 iced_beacon.optional = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+serde.workspace = true
+serde.features = ["derive"]
+serde.optional = true
+serde_json.workspace = true
+serde_json.optional = true
+wasm-bindgen.workspace = true
+wasm-bindgen.optional = true
+web-sys.workspace = true
+web-sys.features = ["CloseEvent", "Location", "MessageEvent", "WebSocket", "Window"]
+web-sys.optional = true

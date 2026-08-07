@@ -419,6 +419,15 @@ mod hot {
     use std::sync::atomic::{self, AtomicBool};
     use std::sync::{Arc, Mutex, OnceLock};
 
+    #[cfg(target_arch = "wasm32")]
+    use serde::Deserialize;
+
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen::{JsCast, closure::Closure};
+
+    #[cfg(target_arch = "wasm32")]
+    use web_sys::{CloseEvent, MessageEvent, WebSocket};
+
     static IS_STALE: AtomicBool = AtomicBool::new(false);
 
     static HOT_FUNCTIONS_PENDING: Mutex<BTreeSet<u64>> =
@@ -440,6 +449,106 @@ mod hot {
 
             IS_STALE.store(false, atomic::Ordering::Relaxed);
         }));
+
+        #[cfg(target_arch = "wasm32")]
+        connect_to_devserver();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[derive(Deserialize)]
+    enum DevserverMessage {
+        HotReload(HotReloadMessage),
+        HotPatchStart,
+        FullReloadStart,
+        FullReloadFailed,
+        FullReloadCommand,
+        Shutdown,
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[derive(Deserialize)]
+    struct HotReloadMessage {
+        jump_table: Option<subsecond::JumpTable>,
+        for_build_id: Option<u64>,
+        for_pid: Option<u32>,
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn connect_to_devserver() {
+        const RECONNECT_DELAY_MS: i32 = 250;
+
+        let Some(window) = web_sys::window() else {
+            return;
+        };
+        let location = window.location();
+        let Ok(host) = location.host() else {
+            return;
+        };
+        let protocol = match location.protocol().as_deref() {
+            Ok("https:") => "wss:",
+            _ => "ws:",
+        };
+        let Ok(websocket) =
+            WebSocket::new(&format!("{protocol}//{host}/_dioxus?build_id=0"))
+        else {
+            return;
+        };
+
+        let on_message = Closure::<dyn FnMut(MessageEvent)>::new(
+            move |event: MessageEvent| {
+                let Some(message) = event.data().as_string() else {
+                    return;
+                };
+                let Ok(message) =
+                    serde_json::from_str::<DevserverMessage>(&message)
+                else {
+                    return;
+                };
+
+                match message {
+                    DevserverMessage::HotReload(message)
+                        if message.for_build_id == Some(0)
+                            && message.for_pid.is_none() =>
+                    {
+                        if let Some(jump_table) = message.jump_table {
+                            // The jump table comes from the local Dioxus devserver.
+                            unsafe {
+                                subsecond::apply_patch(jump_table)
+                                    .expect("apply WASM hot patch");
+                            }
+                        }
+                    }
+                    DevserverMessage::FullReloadCommand => {
+                        let _ = web_sys::window()
+                            .expect("browser window")
+                            .location()
+                            .reload();
+                    }
+                    _ => {}
+                }
+            },
+        );
+        websocket.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
+        on_message.forget();
+
+        let on_close =
+            Closure::<dyn FnMut(CloseEvent)>::new(move |event: CloseEvent| {
+                if event.code() == 1001 {
+                    return;
+                }
+
+                let reconnect =
+                    Closure::<dyn FnMut()>::once(connect_to_devserver);
+                let _ = web_sys::window()
+                    .expect("browser window")
+                    .set_timeout_with_callback_and_timeout_and_arguments_0(
+                        reconnect.as_ref().unchecked_ref(),
+                        RECONNECT_DELAY_MS,
+                    );
+                reconnect.forget();
+            });
+        websocket.set_onclose(Some(on_close.as_ref().unchecked_ref()));
+        on_close.forget();
     }
 
     pub fn call<O>(f: impl FnOnce() -> O) -> O {
