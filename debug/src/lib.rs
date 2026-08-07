@@ -422,9 +422,9 @@ mod hot {
     static HOT_FUNCTIONS: OnceLock<BTreeSet<u64>> = OnceLock::new();
 
     pub fn init() {
-        cargo_hot::connect();
+        dioxus_devtools::connect_subsecond();
 
-        cargo_hot::subsecond::register_handler(Arc::new(|| {
+        subsecond::register_handler(Arc::new(|| {
             if HOT_FUNCTIONS.get().is_none() {
                 HOT_FUNCTIONS
                     .set(std::mem::take(
@@ -442,7 +442,7 @@ mod hot {
 
         // The `move` here is important. Hotpatching will not work
         // otherwise.
-        let mut f = cargo_hot::subsecond::HotFn::current(move || {
+        let mut f = subsecond::HotFn::current(move || {
             f.take().expect("Hot function is stale")()
         });
 
@@ -463,7 +463,7 @@ mod hot {
     }
 
     pub fn on_hotpatch(f: impl Fn() + Send + Sync + 'static) {
-        cargo_hot::subsecond::register_handler(Arc::new(f));
+        subsecond::register_handler(Arc::new(f));
     }
 
     pub fn is_stale() -> bool {
