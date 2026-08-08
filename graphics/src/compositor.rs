@@ -123,7 +123,7 @@ impl<T> Display for T where T: HasDisplayHandle + 'static {}
 /// Defines the default compositor of a renderer.
 pub trait Default {
     /// The compositor of the renderer.
-    type Compositor: Compositor<Renderer = Self>;
+    type Compositor: Compositor<Renderer = Self> + 'static;
 }
 
 /// Result of an unsuccessful call to [`Compositor::present`].
