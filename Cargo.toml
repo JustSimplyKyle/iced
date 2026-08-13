@@ -50,7 +50,7 @@ debug = ["iced_winit/debug", "dep:iced_devtools"]
 # Enables time-travel debugging (very experimental!)
 time-travel = ["debug", "iced_devtools/time-travel"]
 # Enables hot reloading (very experimental!)
-hot = ["debug", "iced_debug/hot"]
+hot = ["debug", "iced_debug/hot", "iced_runtime/hot"]
 # Enables the tester developer tool for recording and playing tests (press F12)
 tester = ["dep:iced_tester"]
 

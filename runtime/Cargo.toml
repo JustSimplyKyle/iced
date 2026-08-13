@@ -15,6 +15,7 @@ workspace = true
 
 [features]
 debug = []
+hot = []
 selector = ["dep:iced_selector"]
 a11y = ["iced_accessibility", "iced_core/a11y"]
 wayland = ["iced_core/wayland", "dep:cctk"]

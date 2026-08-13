@@ -105,7 +105,16 @@ where
         let Cache { mut state } = cache;
         NAMED.with(|named| {
             let mut guard = named.borrow_mut();
-            *guard = state.take_all_named();
+            guard.clear();
+
+            // Upstream iced hot-reloading reconciles the cached tree in
+            // place. Extracting named COSMIC subtrees first temporarily
+            // replaces their state with `State::None`, which is unsafe while
+            // patched widget code is already live.
+            #[cfg(not(feature = "hot"))]
+            {
+                *guard = state.take_all_named();
+            }
         });
 
         state.diff(root.as_widget_mut());
