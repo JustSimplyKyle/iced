@@ -89,6 +89,7 @@ pub struct Scrollable<
     width: Length,
     height: Length,
     direction: Direction,
+    user_scroll: bool,
     auto_scroll: bool,
     content: Element<'a, Message, Theme, Renderer>,
     on_scroll: Option<Box<dyn Fn(Viewport) -> Message + 'a>>,
@@ -125,6 +126,7 @@ where
             width: Length::Shrink,
             height: Length::Shrink,
             direction: direction.into(),
+            user_scroll: true,
             auto_scroll: false,
             content: content.into(),
             on_scroll: None,
@@ -174,6 +176,14 @@ where
     /// Sets the height of the [`Scrollable`].
     pub fn height(mut self, height: impl Into<Length>) -> Self {
         self.height = height.into();
+        self
+    }
+
+    /// Sets whether the user can scroll the [`Scrollable`].
+    ///
+    /// Programmatic scrolling is unaffected.
+    pub fn user_scroll(mut self, user_scroll: bool) -> Self {
+        self.user_scroll = user_scroll;
         self
     }
 
@@ -727,6 +737,11 @@ where
 
         let last_offsets = (state.offset_x, state.offset_y);
 
+        if !self.user_scroll {
+            state.interaction = Interaction::None;
+            state.last_scrolled = None;
+        }
+
         if let Some(last_scrolled) = state.last_scrolled {
             let clear_transaction = match event {
                 Event::Mouse(
@@ -746,7 +761,9 @@ where
         }
 
         let mut update = || {
-            if let Some(scroller_grabbed_at) = state.y_scroller_grabbed_at() {
+            if self.user_scroll
+                && let Some(scroller_grabbed_at) = state.y_scroller_grabbed_at()
+            {
                 match event {
                     Event::Mouse(mouse::Event::CursorMoved { .. })
                     | Event::Touch(touch::Event::FingerMoved { .. }) => {
@@ -779,7 +796,7 @@ where
                     }
                     _ => {}
                 }
-            } else if mouse_over_y_scrollbar {
+            } else if self.user_scroll && mouse_over_y_scrollbar {
                 match event {
                     Event::Mouse(mouse::Event::ButtonPressed(
                         mouse::Button::Left,
@@ -821,7 +838,9 @@ where
                 }
             }
 
-            if let Some(scroller_grabbed_at) = state.x_scroller_grabbed_at() {
+            if self.user_scroll
+                && let Some(scroller_grabbed_at) = state.x_scroller_grabbed_at()
+            {
                 match event {
                     Event::Mouse(mouse::Event::CursorMoved { .. })
                     | Event::Touch(touch::Event::FingerMoved { .. }) => {
@@ -853,7 +872,7 @@ where
                     }
                     _ => {}
                 }
-            } else if mouse_over_x_scrollbar {
+            } else if self.user_scroll && mouse_over_x_scrollbar {
                 match event {
                     Event::Mouse(mouse::Event::ButtonPressed(
                         mouse::Button::Left,
@@ -895,7 +914,11 @@ where
                 }
             }
 
-            if matches!(state.interaction, Interaction::AutoScrolling { .. })
+            if self.user_scroll
+                && matches!(
+                    state.interaction,
+                    Interaction::AutoScrolling { .. }
+                )
                 && matches!(
                     event,
                     Event::Mouse(
@@ -997,6 +1020,10 @@ where
                     )
             ) {
                 state.interaction = Interaction::None;
+                return;
+            }
+
+            if !self.user_scroll {
                 return;
             }
 
