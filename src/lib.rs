@@ -474,6 +474,9 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 use iced_widget::renderer;
 use iced_winit as shell;
+
+#[cfg(target_os = "android")]
+pub use iced_winit::android;
 use iced_winit::core;
 use iced_winit::program;
 use iced_winit::runtime;

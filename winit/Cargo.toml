@@ -21,6 +21,7 @@ unconditional-rendering = []
 linux-theme-detection = ["dep:mundy", "mundy/async-io", "mundy/color-scheme"]
 image = ["iced_runtime/image", "arboard/image-data"]
 x11 = ["winit/x11"]
+android-native-activity = ["winit/android-native-activity"]
 wayland = ["winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita", "arboard/wayland-data-control"]
 
 [dependencies]
@@ -37,7 +38,7 @@ winit.workspace = true
 sysinfo.workspace = true
 sysinfo.optional = true
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
 arboard.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

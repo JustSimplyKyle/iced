@@ -9,7 +9,7 @@ impl Default for Clipboard {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "android")))]
 mod platform {
     use super::*;
 
@@ -151,8 +151,8 @@ mod platform {
     }
 }
 
-// TODO: Wasm support
-#[cfg(target_arch = "wasm32")]
+// TODO: Wasm and Android support
+#[cfg(any(target_arch = "wasm32", target_os = "android"))]
 mod platform {
     use super::*;
 

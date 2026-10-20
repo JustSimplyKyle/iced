@@ -41,6 +41,8 @@ canvas = ["iced_widget/canvas"]
 qr_code = ["iced_widget/qr_code"]
 # Enables the `markdown` widget
 markdown = ["iced_widget/markdown"]
+# Enables running inside an Android `NativeActivity`
+android-native-activity = ["iced_winit/android-native-activity"]
 # Enables debug metrics in native platforms (press F12)
 debug = ["iced_winit/debug", "dep:iced_devtools"]
 # Enables time-travel debugging (very experimental!)

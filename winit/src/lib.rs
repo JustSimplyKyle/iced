@@ -26,6 +26,8 @@ pub use program::graphics;
 pub use runtime::futures;
 pub use winit;
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod clipboard;
 pub mod conversion;
 
@@ -78,9 +80,16 @@ where
     let settings = program.settings();
     let window_settings = program.window();
 
-    let event_loop = EventLoop::with_user_event()
-        .build()
-        .expect("Create event loop");
+    let mut builder = EventLoop::with_user_event();
+
+    #[cfg(target_os = "android")]
+    {
+        use winit::platform::android::EventLoopBuilderExtAndroid;
+
+        let _ = builder.with_android_app(android::app());
+    }
+
+    let event_loop = builder.build().expect("Create event loop");
 
     let backend_settings = backend::Settings::from(&settings);
     let renderer_settings = renderer::Settings::from(&settings);
