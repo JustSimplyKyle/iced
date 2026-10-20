@@ -116,15 +116,17 @@ impl Cache {
                 );
 
                 self.raster.belt.finish();
-                let submission = queue.submit([encoder.finish()]);
+                let _submission = queue.submit([encoder.finish()]);
                 self.raster.belt.recall();
 
                 let Some(entry) = entry else {
                     return Err(core::image::Error::OutOfMemory);
                 };
 
+                // Browser GPU submission progresses through the event loop.
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = device.poll(wgpu::PollType::Wait {
-                    submission_index: Some(submission),
+                    submission_index: Some(_submission),
                     timeout: None,
                 });
 

@@ -688,10 +688,21 @@ impl core::Renderer for Renderer {
         _handle: &core::image::Handle,
         _callback: impl FnOnce(Result<core::image::Allocation, core::image::Error>) + Send + 'static,
     ) {
-        #[cfg(feature = "image")]
+        #[cfg(all(feature = "image", not(target_arch = "wasm32")))]
         self.image_cache
             .borrow_mut()
             .allocate_image(_handle, _callback);
+
+        #[cfg(all(feature = "image", target_arch = "wasm32"))]
+        {
+            // Wasm has no raster worker to complete the queued allocation callback.
+            let allocation = self.image_cache.borrow_mut().load_image(
+                &self.engine.device,
+                &self.engine.queue,
+                _handle,
+            );
+            _callback(allocation);
+        }
     }
 
     fn hint(&mut self, scale_factor: renderer::Scale) {
