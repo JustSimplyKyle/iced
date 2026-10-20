@@ -165,6 +165,12 @@ where
 
         #[cfg(target_arch = "wasm32")]
         canvas: Option<web_sys::HtmlCanvasElement>,
+
+        // Android has no native window to draw into until the first `Resumed`.
+        #[cfg(target_os = "android")]
+        resumed: bool,
+        #[cfg(target_os = "android")]
+        deferred: Vec<Control>,
     }
 
     let runner = Runner {
@@ -178,6 +184,11 @@ where
 
         #[cfg(target_arch = "wasm32")]
         canvas: None,
+
+        #[cfg(target_os = "android")]
+        resumed: false,
+        #[cfg(target_os = "android")]
+        deferred: Vec::new(),
     };
 
     boot_span.finish();
@@ -190,6 +201,15 @@ where
                         .system_theme()
                         .map(conversion::theme_mode)
                         .unwrap_or_default(),
+                );
+            }
+
+            #[cfg(target_os = "android")]
+            if !self.resumed {
+                self.resumed = true;
+                self.process_event(
+                    event_loop,
+                    Event::EventLoopAwakened(winit::event::Event::Resumed),
                 );
             }
         }
@@ -266,6 +286,15 @@ where
     }
 
     impl<Message> Runner<Message> {
+        fn next_control(&mut self) -> Option<Control> {
+            #[cfg(target_os = "android")]
+            if self.resumed && !self.deferred.is_empty() {
+                return Some(self.deferred.remove(0));
+            }
+
+            self.receiver.try_recv().ok()
+        }
+
         fn process_event(
             &mut self,
             event_loop: &winit::event_loop::ActiveEventLoop,
@@ -281,8 +310,8 @@ where
                 let poll = self.instance.as_mut().poll(&mut self.context);
 
                 match poll {
-                    task::Poll::Pending => match self.receiver.try_recv() {
-                        Ok(control) => match control {
+                    task::Poll::Pending => match self.next_control() {
+                        Some(control) => match control {
                             Control::ChangeFlow(flow) => {
                                 use winit::event_loop::ControlFlow;
 
@@ -306,6 +335,19 @@ where
                                 monitor,
                                 on_open,
                             } => {
+                                #[cfg(target_os = "android")]
+                                if !self.resumed {
+                                    self.deferred.push(Control::CreateWindow {
+                                        id,
+                                        settings,
+                                        title,
+                                        scale_factor,
+                                        monitor,
+                                        on_open,
+                                    });
+                                    continue;
+                                }
+
                                 let exit_on_close_request = settings.exit_on_close_request;
 
                                 let visible = settings.visible;
