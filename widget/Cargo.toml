@@ -19,7 +19,7 @@ all-features = true
 
 [features]
 image = ["iced_renderer/image"]
-svg = ["iced_renderer/svg"]
+svg = ["iced_renderer/svg", "dep:js-sys", "dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:web-sys"]
 canvas = ["iced_renderer/geometry"]
 qr_code = ["canvas", "dep:qrcode"]
 wgpu = ["iced_renderer/wgpu-bare"]
@@ -54,3 +54,9 @@ iced_renderer.features = ["tiny-skia", "x11", "wayland"]
 
 iced_widget.workspace = true
 iced_widget.features = ["markdown"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { version = "=0.3.85", optional = true }
+wasm-bindgen = { version = "=0.2.108", optional = true }
+wasm-bindgen-futures = { workspace = true, optional = true }
+web-sys = { workspace = true, optional = true, features = ["Window", "Response"] }

@@ -28,6 +28,9 @@ use crate::core::{
 
 use std::path::PathBuf;
 
+#[cfg(target_arch = "wasm32")]
+mod web;
+
 pub use crate::core::svg::Handle;
 
 /// A vector graphics image.
@@ -57,6 +60,8 @@ where
     Theme: Catalog,
 {
     handle: Handle,
+    #[cfg(target_arch = "wasm32")]
+    download: Option<web::Source>,
     width: Length,
     height: Length,
     content_fit: ContentFit,
@@ -74,6 +79,8 @@ where
     pub fn new(handle: impl Into<Handle>) -> Self {
         Svg {
             handle: handle.into(),
+            #[cfg(target_arch = "wasm32")]
+            download: None,
             width: Length::Fill,
             height: Length::Fit,
             content_fit: ContentFit::Contain,
@@ -89,6 +96,32 @@ where
     #[must_use]
     pub fn from_path(path: impl Into<PathBuf>) -> Self {
         Self::new(Handle::from_path(path))
+    }
+
+    /// Creates an SVG that asynchronously downloads its bytes from a browser URL.
+    /// Repeated widgets share a download. Failed requests are logged once.
+    #[cfg(target_arch = "wasm32")]
+    #[must_use]
+    pub fn from_url(url: impl Into<String>) -> Self {
+        let source = web::Source::new(url.into());
+        let mut svg = Self::new(source.handle().unwrap_or_else(|| {
+            Handle::from_memory(
+                &b"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>"[..],
+            )
+        }));
+        svg.download = Some(source);
+        svg
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn refresh_download(&mut self) -> bool {
+        if let Some(handle) = self.download.as_ref().and_then(web::Source::handle)
+            && handle.id() != self.handle.id()
+        {
+            self.handle = handle;
+            return true;
+        }
+        false
     }
 
     /// Sets the width of the [`Svg`].
@@ -163,6 +196,9 @@ where
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &layout::Limits) {
+        #[cfg(target_arch = "wasm32")]
+        self.refresh_download();
+
         // The raw w/h of the underlying image
         let Size { width, height } = renderer.measure_svg(&self.handle);
         let image_size = Size::new(width as f32, height as f32);
@@ -201,6 +237,19 @@ where
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if self.refresh_download() {
+                shell.invalidate_layout();
+                shell.request_redraw();
+            }
+            if self.download.as_ref().is_some_and(web::Source::pending) {
+                shell.request_redraw_at(
+                    crate::core::time::Instant::now() + std::time::Duration::from_millis(50),
+                );
+            }
+        }
+
         let current_status = if cursor.is_over(layout.bounds()) {
             Status::Hovered
         } else {
