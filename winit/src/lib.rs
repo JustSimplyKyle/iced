@@ -205,7 +205,7 @@ where
             }
 
             #[cfg(target_os = "android")]
-            if !self.resumed {
+            {
                 self.resumed = true;
                 self.process_event(
                     event_loop,
@@ -731,6 +731,22 @@ async fn run_instance<P>(
             }
             Event::EventLoopAwakened(event) => {
                 match event {
+                    // Android replaces the native window whenever the activity returns
+                    // to the foreground, invalidating every surface.
+                    #[cfg(target_os = "android")]
+                    event::Event::Resumed => {
+                        if let Some(compositor) = &mut compositor {
+                            for (_id, window) in window_manager.iter_mut() {
+                                let size = window.state.physical_size();
+                                window.surface = compositor.create_surface(
+                                    window.raw.clone(),
+                                    size.width,
+                                    size.height,
+                                );
+                                window.raw.request_redraw();
+                            }
+                        }
+                    }
                     event::Event::NewEvents(event::StartCause::Init) => {
                         for (_id, window) in window_manager.iter_mut() {
                             window.raw.request_redraw();
